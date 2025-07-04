@@ -1,11 +1,18 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { readDir, BaseDirectory, type DirEntry } from "@tauri-apps/plugin-fs";
+  import {
+    readDir,
+    BaseDirectory,
+    type DirEntry,
+    writeTextFile,
+    mkdir,
+  } from "@tauri-apps/plugin-fs";
   import * as tauri_path from "@tauri-apps/api/path";
   import { onMount } from "svelte";
 
-  import { FolderIcon, FileIcon, ArrowUpIcon, PlusIcon } from "@lucide/svelte";
+  import { FolderIcon, FileIcon, ArrowUpIcon } from "@lucide/svelte";
   import { isHidden } from "../lib/utils";
+  import CreateDropdown from "../lib/components/CreateDropdown.svelte";
 
   let home = $state("");
   let path_input = $state("");
@@ -66,6 +73,34 @@
   async function handleSubmitFilePath() {
     getEntries(path_input);
   }
+
+  async function handleCreateFile() {
+    const fileName = prompt("Enter file name:");
+    if (fileName) {
+      try {
+        const filePath = await tauri_path.join(current_path, fileName);
+        await writeTextFile(filePath, "");
+        getEntries(current_path); // Refresh the directory listing
+      } catch (error) {
+        console.error("Error creating file:", error);
+        alert("Failed to create file");
+      }
+    }
+  }
+
+  async function handleCreateFolder() {
+    const folderName = prompt("Enter folder name:");
+    if (folderName) {
+      try {
+        const folderPath = await tauri_path.join(current_path, folderName);
+        await mkdir(folderPath);
+        getEntries(current_path); // Refresh the directory listing
+      } catch (error) {
+        console.error("Error creating folder:", error);
+        alert("Failed to create folder");
+      }
+    }
+  }
 </script>
 
 <main class="w-full bg-sky-50 h-screen flex flex-col">
@@ -85,13 +120,10 @@
         bind:value={path_input}
       />
     </form>
-    <button
-      onclick={ascendDirectory}
-      class="bg-white rounded-full p-2 cursor-pointer transition active:scale-90 hover:shadow flex items-center gap-1"
-    >
-      <PlusIcon class="size-5 text-sky-500" />
-      <span class="text-sky-500 leading-5 pb-0.5">Create</span>
-    </button>
+    <CreateDropdown
+      onCreateFile={handleCreateFile}
+      onCreateFolder={handleCreateFolder}
+    />
   </div>
 
   <div
