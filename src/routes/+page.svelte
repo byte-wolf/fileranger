@@ -11,6 +11,7 @@
   let path_input = $state("");
   let current_path = $state("");
   let entries: DirEntry[] = $state([]);
+  let scrollContainer: HTMLDivElement;
 
   let sorted_entries: DirEntry[] = $derived(
     entries
@@ -21,6 +22,13 @@
       })
       .filter((entry) => !isHidden(entry))
   );
+
+  // Reset scroll position when path changes
+  $effect(() => {
+    if (scrollContainer && current_path) {
+      scrollContainer.scrollTop = 0;
+    }
+  });
 
   onMount(async () => {
     home = await tauri_path.homeDir();
@@ -101,7 +109,7 @@
         </tr>
       </thead>
     </table>
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto" bind:this={scrollContainer}>
       <table class="w-full overflow-hidden table-fixed">
         <tbody class="overflow-y-scroll">
           {#each sorted_entries as entry}
