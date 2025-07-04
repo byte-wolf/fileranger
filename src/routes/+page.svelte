@@ -1,156 +1,140 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { readDir, BaseDirectory, type DirEntry } from "@tauri-apps/plugin-fs";
+  import * as tauri_path from "@tauri-apps/api/path";
+  import { onMount } from "svelte";
 
-  let name = $state("");
-  let greetMsg = $state("");
+  import { FolderIcon, FileIcon, ArrowUpIcon, PlusIcon } from "@lucide/svelte";
+  import { isHidden } from "../lib/utils";
 
-  async function greet(event: Event) {
-    event.preventDefault();
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsg = await invoke("greet", { name });
+  let home = $state("");
+  let path_input = $state("");
+  let current_path = $state("");
+  let entries: DirEntry[] = $state([]);
+
+  let sorted_entries: DirEntry[] = $derived(
+    entries
+      .toSorted((a, b) => {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.localeCompare(b.name);
+      })
+      .filter((entry) => !isHidden(entry))
+  );
+
+  onMount(async () => {
+    home = await tauri_path.homeDir();
+
+    path_input = await tauri_path.join(home);
+    current_path = path_input;
+
+    getEntries(current_path);
+  });
+
+  async function getEntries(path: string) {
+    try {
+      entries = await readDir(path, { baseDir: BaseDirectory.AppLocalData });
+      current_path = path;
+    } catch (error) {
+      console.error(error);
+      path_input = current_path;
+    }
+
+    path_input = await tauri_path.normalize(path_input);
+  }
+
+  async function ascendDirectory() {
+    path_input = await tauri_path.dirname(path_input);
+    getEntries(path_input);
+  }
+
+  async function handleEntryClick(entry: DirEntry) {
+    if (entry.isDirectory) {
+      path_input = await tauri_path.join(path_input, entry.name);
+      getEntries(path_input);
+    }
+  }
+
+  async function handleSubmitFilePath() {
+    getEntries(path_input);
   }
 </script>
 
-<main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
-
-  <div class="row">
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://kit.svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
-    </a>
+<main class="w-full bg-sky-50">
+  <div class="bg-sky-50 p-4 flex gap-2">
+    <button
+      onclick={ascendDirectory}
+      class="bg-white rounded-full p-2 cursor-pointer transition active:scale-90 hover:shadow"
+    >
+      <ArrowUpIcon class="size-5 text-sky-500" />
+    </button>
+    <form onsubmit={handleSubmitFilePath} class="w-full">
+      <input
+        class="cursor-pointer hover:shadow transition bg-white rounded-2xl px-3 py-1.5 w-full text-sky-500 ring-0 ring-offset-0 outline-0 focus:text-sky-800 font-mono focus:outline-0 focus:ring-2 focus:ring-sky-400"
+        type="text"
+        name="path"
+        id="path"
+        bind:value={path_input}
+      />
+    </form>
+    <button
+      onclick={ascendDirectory}
+      class="bg-white rounded-full p-2 cursor-pointer transition active:scale-90 hover:shadow flex items-center gap-1"
+    >
+      <PlusIcon class="size-5 text-sky-500" />
+      <span class="text-sky-500 leading-5 pb-0.5">Create</span>
+    </button>
   </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
 
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name} />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{greetMsg}</p>
+  <div class="px-4 py-2 bg-white rounded-tl-3xl">
+    <table class="w-full overflow-hidden table-fixed">
+      <thead>
+        <tr class="border-b border-neutral-200">
+          <th class="text-left py-3 px-1 font-medium text-neutral-700 w-18"
+            ><span class="px-3 py-1">Type</span></th
+          >
+          <th class="text-left py-3 px-1 font-medium text-neutral-700"
+            ><span class="px-3 py-1">Name</span></th
+          >
+        </tr>
+      </thead>
+      <tbody>
+        {#each sorted_entries as entry}
+          <tr
+            class="hover:bg-sky-50 border-b border-neutral-100 cursor-pointer"
+            onclick={() => handleEntryClick(entry)}
+          >
+            <td class="py-3 px-4 w-16">
+              {#if entry.isDirectory}
+                <FolderIcon
+                  class={"size-5 " +
+                    (isHidden(entry)
+                      ? "fill-sky-100/30 text-sky-300/30"
+                      : "fill-sky-300 text-sky-300")}
+                />
+              {:else}
+                <FileIcon
+                  class={"size-5 " +
+                    (isHidden(entry)
+                      ? "fill-sky-100/30 text-sky-300/30"
+                      : "fill-sky-100 text-sky-300")}
+                />
+              {/if}
+            </td>
+            <td class="py-3 px-4 text-neutral-700 max-w-0">
+              <div
+                class={"text-ellipsis text-nowrap overflow-hidden " +
+                  (isHidden(entry) ? "text-neutral-400" : "")}
+              >
+                {entry.name}
+              </div>
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 </main>
 
 <style>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
-}
-
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 </style>
