@@ -60,7 +60,7 @@
   }
 </script>
 
-<main class="w-full bg-sky-50">
+<main class="w-full bg-sky-50 h-screen flex flex-col">
   <div class="bg-sky-50 p-4 flex gap-2">
     <button
       onclick={ascendDirectory}
@@ -86,8 +86,10 @@
     </button>
   </div>
 
-  <div class="px-4 py-2 bg-white rounded-tl-3xl">
-    <table class="w-full overflow-hidden table-fixed">
+  <div
+    class="h-full px-4 py-2 bg-white rounded-tl-3xl flex-grow overflow-hidden flex flex-col"
+  >
+    <table class="w-full table-fixed">
       <thead>
         <tr class="border-b border-neutral-200">
           <th class="text-left py-3 px-1 font-medium text-neutral-700 w-18"
@@ -98,41 +100,45 @@
           >
         </tr>
       </thead>
-      <tbody>
-        {#each sorted_entries as entry}
-          <tr
-            class="hover:bg-sky-50 border-b border-neutral-100 cursor-pointer"
-            onclick={() => handleEntryClick(entry)}
-          >
-            <td class="py-3 px-4 w-16">
-              {#if entry.isDirectory}
-                <FolderIcon
-                  class={"size-5 " +
-                    (isHidden(entry)
-                      ? "fill-sky-100/30 text-sky-300/30"
-                      : "fill-sky-300 text-sky-300")}
-                />
-              {:else}
-                <FileIcon
-                  class={"size-5 " +
-                    (isHidden(entry)
-                      ? "fill-sky-100/30 text-sky-300/30"
-                      : "fill-sky-100 text-sky-300")}
-                />
-              {/if}
-            </td>
-            <td class="py-3 px-4 text-neutral-700 max-w-0">
-              <div
-                class={"text-ellipsis text-nowrap overflow-hidden " +
-                  (isHidden(entry) ? "text-neutral-400" : "")}
-              >
-                {entry.name}
-              </div>
-            </td>
-          </tr>
-        {/each}
-      </tbody>
     </table>
+    <div class="flex-1 overflow-y-auto">
+      <table class="w-full overflow-hidden table-fixed">
+        <tbody class="overflow-y-scroll">
+          {#each sorted_entries as entry}
+            <tr
+              class="hover:bg-sky-50 border-b border-neutral-100 cursor-pointer"
+              onclick={() => handleEntryClick(entry)}
+            >
+              <td class="py-3 px-4 w-16">
+                {#if entry.isDirectory}
+                  <FolderIcon
+                    class={"size-5 " +
+                      (isHidden(entry)
+                        ? "fill-sky-100/30 text-sky-300/30"
+                        : "fill-sky-300 text-sky-300")}
+                  />
+                {:else}
+                  <FileIcon
+                    class={"size-5 " +
+                      (isHidden(entry)
+                        ? "fill-sky-100/30 text-sky-300/30"
+                        : "fill-sky-100 text-sky-300")}
+                  />
+                {/if}
+              </td>
+              <td class="py-3 px-4 text-neutral-700 max-w-0">
+                <div
+                  class={"text-ellipsis text-nowrap overflow-hidden " +
+                    (isHidden(entry) ? "text-neutral-400" : "")}
+                >
+                  {entry.name}
+                </div>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   </div>
 </main>
 
